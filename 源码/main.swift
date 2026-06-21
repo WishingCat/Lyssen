@@ -1114,11 +1114,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         installKeyboardShortcuts()
 
         model.start()
+        runSandboxProbeIfRequested()
 
         if model.showWindowOnLaunch {
             DispatchQueue.main.async { [weak self] in
                 self?.openWindow()
             }
+        }
+    }
+
+    private func runSandboxProbeIfRequested() {
+        guard ProcessInfo.processInfo.environment["LYSSEN_SANDBOX_PROBE"] == "1" else { return }
+
+        let devices = allDevices()
+        let input = defaultInputDevice()
+        let output = defaultOutputDevice()
+        let builtin = findBuiltinMic()
+        let setCurrent = setDefaultInput(input)
+        let setBuiltin = builtin.map { setDefaultInput($0) }
+        let report = """
+        sandboxProbe=1
+        tempDirectory=\(NSTemporaryDirectory())
+        devices.count=\(devices.count)
+        currentInput.id=\(input)
+        currentInput.name=\(deviceName(input))
+        currentOutput.id=\(output)
+        currentOutput.name=\(deviceName(output))
+        builtinInput.id=\(builtin.map(String.init) ?? "nil")
+        builtinInput.name=\(builtin.map(deviceName) ?? "nil")
+        setCurrentInput.ok=\(setCurrent)
+        setBuiltinInput.ok=\(setBuiltin.map(String.init) ?? "nil")
+        devices=\(devices.map { "\(deviceName($0))|\(transportType($0))|input:\(hasInputChannels($0))" }.joined(separator: "; "))
+        """
+
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("lyssen-sandbox-probe.txt")
+        do {
+            try report.write(to: url, atomically: true, encoding: .utf8)
+            NSLog("Lyssen sandbox probe wrote \(url.path)")
+        } catch {
+            NSLog("Lyssen sandbox probe failed: \(error.localizedDescription)")
         }
     }
 

@@ -9,6 +9,7 @@
 - 当前 Bundle ID：`com.wishingcat.lyssen.menubar`
 - 当前分发方式：GitHub Release zip
 - 当前构建方式：`swiftc` + ad-hoc 签名
+- App Store 沙盒 entitlement：`源码/LyssenAppStore.entitlements`
 
 当前版本适合直接分发和 GitHub Release，但还不是 Mac App Store 标准提交包。
 
@@ -40,6 +41,55 @@ Mac App Store 应用需要启用 App Sandbox。Lyssen 的核心能力是通过 C
 - 沙盒环境下能否调用 CoreAudio 切换默认输入设备
 
 如果沙盒阻止核心能力，Mac App Store 版本可能需要调整功能，或继续采用 GitHub + notarized direct distribution 的分发路线。
+
+#### 2026-06-21 本机沙盒测试结果
+
+已使用 `com.apple.security.app-sandbox = true` 构建 `dist/Lyssen Sandbox.app`，并通过隐藏探针 `LYSSEN_SANDBOX_PROBE=1` 在沙盒 App 内执行 CoreAudio 测试。
+
+通过项：
+
+- 沙盒 App 可启动为菜单栏后台应用。
+- 菜单栏 `L` 可见。
+- 设置窗口可打开。
+- 沙盒内可读取音频设备列表。
+- 沙盒内可读取当前默认输入设备。
+- 沙盒内可读取当前默认输出设备。
+- 沙盒内调用 CoreAudio 设置当前输入为当前设备返回成功。
+- 沙盒内调用 CoreAudio 设置当前输入为内置麦克风返回成功。
+
+本机测试设备：
+
+- 当前输入：MacBook Pro 麦克风
+- 当前输出：MacBook Pro 扬声器
+- 其他输入：TRTC Audio Device
+
+未完成项：
+
+- 早期测试时未连接可作为默认输入切换目标的蓝牙耳机麦克风，TRTC Audio Device 虽然对 `AudioObjectSetPropertyData` 返回成功，但系统没有实际把默认输入切到该虚拟设备，因此不能用它替代蓝牙麦克风完成最终验证。
+
+#### 2026-06-21 蓝牙耳机端到端沙盒测试结果
+
+已连接蓝牙耳机 `HUAWEI FreeClip 2` 后重新测试。
+
+测试步骤：
+
+1. 关闭普通 Lyssen 与沙盒 Lyssen。
+2. 将系统默认输入手动切到 `HUAWEI FreeClip 2`。
+3. 确认切换前当前输入为 `HUAWEI FreeClip 2`。
+4. 启动带 App Sandbox 的 `Lyssen Sandbox.app`。
+5. 读取沙盒探针报告并再次检查系统默认输入。
+
+结果：
+
+- 切换前输入：`HUAWEI FreeClip 2`
+- 沙盒 Lyssen 启动后输入：`MacBook Pro 麦克风`
+- 沙盒 Lyssen 启动后输出：`HUAWEI FreeClip 2`
+- `setCurrentInput.ok=true`
+- `setBuiltinInput.ok=true`
+
+结论：
+
+App Sandbox 没有阻止 Lyssen 的核心 CoreAudio 守护逻辑。当前测试环境下，沙盒版 Lyssen 可以在蓝牙耳机麦克风成为默认输入后，把默认输入切回 Mac 内置麦克风，同时保留蓝牙耳机作为输出设备。
 
 ### 5. App Store Connect 信息
 
