@@ -1,0 +1,14 @@
+.DS_Store
+
+# Local reference screenshots and design study files
+/Breathwrk ios Jun 2026/
+
+# Built app bundles and release artifacts
+/Lyssen.app/
+/dist/
+*.zip
+
+# Swift / Xcode temporary files
+.build/
+DerivedData/
+*.xcuserstate
